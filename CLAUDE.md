@@ -30,7 +30,7 @@ Visual check without clicking around (and without triggering `warp-cli`): `WARP_
 
 The CMake file forces miniaudio's ALSA backend (`MA_NO_PULSEAUDIO MA_NO_JACK` on the raylib target) because the PulseAudio backend fails to open a device under PipeWire. Don't remove it.
 
-Note: `wp/` sits untracked inside the parent git repo `~/c++`; that repo's `git log` belongs to other projects.
+`wp/` is its own git repo (remote: `git@gitlab.com:cesar.oliveira2/warp-menu.git`, **private** — keep it private because of the sprite licence). It is nested inside the unrelated parent repo `~/c++`, so run git commands from `wp/`.
 
 ### System dependencies (one-time)
 ```bash
