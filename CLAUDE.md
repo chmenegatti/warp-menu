@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A **top-down 16-bit village** for controlling Cloudflare WARP at TOTVS. Native C++ app built on **raylib**. A wizard walks along a dirt street lined with taverns, and **each tavern is one action: walk up into its door to run it**. The actions are connect, disconnect and switching between the 3 vnets (`default`, `TESP2`, `TECE1`). Walking off the right end of the street (the `EXIT>` sign) quits. It has procedural chiptune SFX and optional background music.
 
-The sprites come from **Anokolisa's "Pixel Crawler" free pack** (`assets/pixelcrawler/`, licence in `TERMS.pdf` there). Free use is allowed and credit is optional, but the sheets must not be redistributed as an asset pack.
+The sprites come from **Anokolisa's "Pixel Crawler" free pack** (`assets/pixelcrawler/`, licence in `TERMS.pdf` there). Free use is allowed and credit is optional, but the assets must not be sold or marketed as a product of their own.
 
-GUI-only by design (no terminal fallback). Needs an X11/Wayland display.
+It ships to colleagues as packages for Linux (`.deb`/`.rpm`), Windows (`.zip`) and macOS (universal `.dmg`), built by GitHub Actions. User-facing docs are in pt-BR: `README.md`, `docs/install/{linux,windows,macos}.md` and `docs/building.md`, which covers building, packaging and the release process.
+
+GUI-only by design (no terminal fallback). Needs a display and OpenGL 3.3.
 
 ## Build & run
 
@@ -30,7 +32,19 @@ Visual check without clicking around (and without triggering `warp-cli`): `WARP_
 
 The CMake file forces miniaudio's ALSA backend (`MA_NO_PULSEAUDIO MA_NO_JACK` on the raylib target) because the PulseAudio backend fails to open a device under PipeWire. Don't remove it.
 
-`wp/` is its own git repo (remote `origin`: `git@github.com:chmenegatti/warp-menu.git`; an older copy also sits on remote `gitlab`, **private** — keep it private because of the sprite licence). It is nested inside the unrelated parent repo `~/c++`, so run git commands from `wp/`.
+`wp/` is its own git repo (remote `origin`: `git@github.com:chmenegatti/warp-menu.git`, public; an older copy also sits on remote `gitlab`). It is nested inside the unrelated parent repo `~/c++`, so run git commands from `wp/`.
+
+### Packaging & CI
+
+- **Linux** `.deb` + `.rpm`: built with CPack inside a `rockylinux:9` container by `packaging/linux/build-packages.sh`, which outputs to `build-pkg/`. Locally the container needs `--network host`, because DNS fails in the container while WARP is connected.
+  - Linkage: `libstdc++`/`libgcc` are static, and raylib is forced to link the legacy `libGL.so.1` (`OpenGL_GL_PREFERENCE LEGACY`); the default `libOpenGL.so.0` is missing on stock Ubuntu.
+  - Runtime deps: GLFW and miniaudio `dlopen` X11/GL/ALSA, so those deps are declared by hand (`CPACK_DEBIAN_PACKAGE_DEPENDS`, `CPACK_RPM_PACKAGE_REQUIRES`). The binary needs glibc ≥ 2.35 (`_dl_find_object` from the static libgcc); RHEL 9 has it backported.
+  - Contents: only the `app` install component is packaged (`CPACK_INSTALL_CMAKE_PROJECTS`); otherwise raylib's own install rules leak headers and `libraylib.a` into the packages.
+  - Verified: install + `xvfb-run` snapshot on Ubuntu 22.04/24.04, Debian 12, Fedora and Rocky 9.
+- **Windows:** MSVC with the `WIN32` subsystem (`/ENTRY:mainCRTStartup`), so no console. The icon comes via `packaging/windows/warp-menu.rc`, and a POST_BUILD step copies `assets/` next to the exe. CI zips `warp-menu.exe` + `assets/`.
+- **macOS:** `MACOSX_BUNDLE` with `warp-menu.icns`, and a POST_BUILD step copies `assets/` into `Contents/Resources/assets`. CI builds universal (`arm64;x86_64`, deployment target 11.0), ad-hoc signs the app (`codesign -s -`, required on arm64), renames it to `TOTVS WARP.app` and creates the DMG with `hdiutil`. It is not notarized.
+- **CI:** `.github/workflows/build.yml` runs on push/PR. A `v*` tag also creates a GitHub Release with the 4 files. Package filenames come from `project(... VERSION x.y.z)` in `CMakeLists.txt`, so keep the tag and the version in sync.
+- **Icons:** generated from the wizard idle frame: `assets/icon.png` (runtime window icon + Linux), `.ico`, `.icns`.
 
 ### System dependencies (one-time)
 ```bash
@@ -58,7 +72,13 @@ Runtime: `warp-cli` must be on PATH (the app shells out to it).
 - **`audio.{hpp,cpp}` — `AudioBank`**: SFX are **synthesised procedurally** (square waves with pitch slide + decay, built into `Wave`→`Sound` buffers) — no sound asset files. Background music is an optional file loaded from `assets/music/theme.{ogg,xm,mod,mp3}`, skipped silently if absent.
 - **`main.cpp`**: window/audio init, the `MenuItem` list (label = tooltip, sign = roof plaque; tavern index == item index), and the **state machine** `Menu → Confirm (disconnect only) → Running → Result → Menu`. The wizard is steerable only on `Menu`. `entered` calls `launch(idx)`. Going back to `Menu` (a cancelled confirm or a shown result) calls `town.leaveTavern()`. `exited` or Esc quits. Connect / vnet switch close the app on success. It also renders the HUD, the `UP: <label>` door tooltip and the message boxes.
 
-`ASSETS_DIR` is baked in at compile time (CMake `target_compile_definitions`) pointing at the source-tree `assets/` dir, so the binary finds the font/music regardless of cwd.
+Assets are found at runtime by `findAssets()` in `main.cpp`, relative to the executable (`GetApplicationDirectory()`). The candidates are tried in this order:
+1. `<exe>/assets` (Windows / loose copy)
+2. `<exe>/../share/warp-menu/assets` (Linux packages)
+3. `<exe>/../Resources/assets` (macOS bundle)
+4. the compile-time `ASSETS_DIR`, which is the source tree and serves as the dev fallback.
+
+`warp-cli` is resolved once in `warp.cpp`. `WARP_CLI` overrides it; otherwise it is searched in `PATH`, then in Cloudflare's install locations, because a GUI launched from Finder or a menu gets a minimal `PATH`. On Windows it is run via `CreateProcess` with `CREATE_NO_WINDOW`, so no console flashes; on POSIX via `popen`/`system` with single-quoted args. Keep `windows.h` out of any file that includes `raylib.h`, since they clash (`CloseWindow`, `Rectangle`, …).
 
 ## Conventions
 

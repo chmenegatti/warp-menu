@@ -74,10 +74,12 @@ jobs:
       - name: Smoke test (screenshot)
         continue-on-error: true
         run: |
-          WARP_SNAPSHOT="$PWD/macos-smoke.png" "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" &
+          WARP_DEBUG=1 WARP_SNAPSHOT="$PWD/macos-smoke.png" \
+            "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" > smoke.log 2>&1 &
           pid=$!
           for i in $(seq 30); do [ -f macos-smoke.png ] && break; sleep 1; done
           kill $pid 2>/dev/null || true
+          cat smoke.log
           ls -l macos-smoke.png
       - uses: actions/upload-artifact@v4
         with:
