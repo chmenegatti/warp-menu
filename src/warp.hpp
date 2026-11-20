@@ -24,7 +24,7 @@ public:
 
     // --- live status (updated by refreshStatus / background poll) ----------
     std::string status() const;        // "Connected" / "Disconnected" / "Unknown"
-    std::string vnetName() const;      // human label of selected vnet, or "—"
+    std::string vnetName() const;      // human label of selected vnet, or "-"
     bool isConnected() const;
 
     // Re-query warp-cli status + vnet (blocking; cheap, call off the hot path
@@ -53,7 +53,7 @@ private:
 
     mutable std::mutex statusMtx_;
     std::string status_{"Unknown"};
-    std::string vnetName_{"—"};
+    std::string vnetName_{"-"};
     double lastPoll_{-1e9};
 
     std::atomic<ActionState> action_{ActionState::Idle};

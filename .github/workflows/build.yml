@@ -1,0 +1,112 @@
+name: build
+
+# Builds the installable packages for every OS on each push to main / PR.
+# Pushing a tag like v1.2.3 also publishes them as a GitHub Release.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux (.deb + .rpm)
+    runs-on: ubuntu-latest
+    # Rocky Linux 9: old-enough glibc for Ubuntu 22.04+, Debian 12+, Fedora, RHEL 9.
+    container: rockylinux:9
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh packaging/linux/build-packages.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-linux
+          path: |
+            build-pkg/*.deb
+            build-pkg/*.rpm
+          if-no-files-found: error
+
+  windows:
+    name: Windows (.zip)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -A x64
+      - run: cmake --build build --config Release --parallel
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path CMakeLists.txt -Pattern 'project\(warp_menu VERSION (\S+)').Matches[0].Groups[1].Value
+          New-Item -ItemType Directory -Force dist/TOTVS-WARP | Out-Null
+          Copy-Item build/Release/warp-menu.exe dist/TOTVS-WARP/
+          Copy-Item -Recurse build/Release/assets dist/TOTVS-WARP/
+          Compress-Archive -Path dist/TOTVS-WARP -DestinationPath "warp-menu-$v-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-windows
+          path: warp-menu-*-windows-x64.zip
+          if-no-files-found: error
+
+  macos:
+    name: macOS (.dmg, universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - run: cmake --build build --parallel
+      - name: Package dmg
+        run: |
+          v=$(sed -n 's/^project(warp_menu VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          mkdir -p dmg
+          cp -R build/warp-menu.app "dmg/TOTVS WARP.app"
+          # Ad-hoc signature (required on Apple Silicon); not notarized.
+          codesign --force --deep --sign - "dmg/TOTVS WARP.app"
+          lipo -info "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu"
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "TOTVS WARP" -srcfolder dmg -ov -format UDZO \
+            "warp-menu-$v-macos-universal.dmg"
+      - name: Smoke test (screenshot)
+        continue-on-error: true
+        run: |
+          WARP_SNAPSHOT="$PWD/macos-smoke.png" "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" &
+          pid=$!
+          for i in $(seq 30); do [ -f macos-smoke.png ] && break; sleep 1; done
+          kill $pid 2>/dev/null || true
+          ls -l macos-smoke.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-macos
+          path: warp-menu-*-macos-universal.dmg
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-macos
+          path: macos-smoke.png
+          if-no-files-found: ignore
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pkg-*
+          path: dist
+          merge-multiple: true
+      - run: ls -l dist
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --repo "$GITHUB_REPOSITORY"
+          --title "TOTVS WARP $GITHUB_REF_NAME"
+          --generate-notes

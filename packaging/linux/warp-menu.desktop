@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=TOTVS WARP
+GenericName=Cloudflare WARP menu
+Comment=Connect, disconnect and switch Cloudflare WARP virtual networks
+Exec=warp-menu
+Icon=warp-menu
+Terminal=false
+Categories=Network;Utility;
+Keywords=warp;cloudflare;vpn;vnet;

@@ -38,14 +38,27 @@ std::string upper(std::string s) {
     return s;
 }
 
+// Where the assets/ folder lives, relative to the executable first so the
+// packaged builds work anywhere:
+//   <exe dir>/assets                      Windows zip, dev copies
+//   <exe dir>/../share/warp-menu/assets   Linux .deb/.rpm (/usr/bin/warp-menu)
+//   <exe dir>/../Resources/assets         macOS .app bundle
+// falling back to the source tree baked in at compile time (dev builds).
+std::string findAssets() {
+    const std::string exe = GetApplicationDirectory();  // ends with a separator
+    const std::string candidates[] = {exe + "assets", exe + "../share/warp-menu/assets",
+                                      exe + "../Resources/assets", ASSETS_DIR};
+    for (const auto& c : candidates)
+        if (DirectoryExists((c + "/pixelcrawler").c_str())) return c;
+    return ASSETS_DIR;
+}
+
 // Try a couple of common music filenames; first that exists wins.
-std::string findMusic() {
-    const char* names[] = {ASSETS_DIR "/music/theme.ogg",
-                           ASSETS_DIR "/music/theme.xm",
-                           ASSETS_DIR "/music/theme.mod",
-                           ASSETS_DIR "/music/theme.mp3"};
-    for (const char* n : names)
-        if (FileExists(n)) return n;
+std::string findMusic(const std::string& assets) {
+    for (const char* ext : {"ogg", "xm", "mod", "mp3"}) {
+        std::string n = assets + "/music/theme." + ext;
+        if (FileExists(n.c_str())) return n;
+    }
     return "";
 }
 
@@ -71,11 +84,19 @@ int main() {
     // while the camera scrolls). The timer cap is only a fallback, applied
     // below if vsync turns out not to throttle.
 
+    const std::string assets = findAssets();
+#ifndef __APPLE__  // macOS takes the icon from the .app bundle
+    if (Image icon = LoadImage((assets + "/icon.png").c_str()); icon.data) {
+        SetWindowIcon(icon);
+        UnloadImage(icon);
+    }
+#endif
+
     ui::Ui gui;
-    gui.init(ASSETS_DIR "/font/PressStart2P.ttf");
+    gui.init(assets + "/font/PressStart2P.ttf");
 
     AudioBank audio;
-    audio.load(findMusic());
+    audio.load(findMusic(assets));
 
     WarpController warp;
 
@@ -91,7 +112,7 @@ int main() {
     {
         std::vector<std::string> signs;
         for (const auto& it : items) signs.push_back(it.sign);
-        town.init(ASSETS_DIR, signs);
+        town.init(assets, signs);
     }
 
     Screen screen = Screen::Menu;
