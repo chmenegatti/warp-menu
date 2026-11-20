@@ -71,24 +71,21 @@ jobs:
           ln -s /Applications dmg/Applications
           hdiutil create -volname "TOTVS WARP" -srcfolder dmg -ov -format UDZO \
             "warp-menu-$v-macos-universal.dmg"
-      # Best effort: GitHub's macOS VMs have no OpenGL, so the app usually
-      # exits with "could not create an OpenGL 3.3 window" here.
-      - name: Smoke test (screenshot)
-        continue-on-error: true
+      # GitHub's macOS VMs have no OpenGL, so the app normally can't open its
+      # window there. This still catches crashes: it must either save the
+      # screenshot or exit cleanly with "could not create an OpenGL 3.3 window".
+      - name: Smoke test
         run: |
-          WARP_DEBUG=1 WARP_SNAPSHOT="$PWD/macos-smoke.png" \
-            "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" > smoke.log 2>&1 &
-          pid=$!
-          for i in $(seq 30); do [ -f macos-smoke.png ] && break; sleep 1; done
-          kill $pid 2>/dev/null || true
+          set +e
+          WARP_SNAPSHOT="$PWD/macos-smoke.png" \
+            "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" > smoke.log 2>&1
+          rc=$?
           cat smoke.log
-          if ! ls -l macos-smoke.png; then
-            echo "--- backtrace ---"
-            WARP_DEBUG=1 WARP_SNAPSHOT="$PWD/macos-smoke.png" lldb --batch \
-              -o run -k "thread backtrace all" -k quit \
-              -- "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" 2>&1 | tail -60
-            exit 1
+          if [ -f macos-smoke.png ]; then echo "screenshot OK"; exit 0; fi
+          if [ $rc -eq 1 ] && grep -q "could not create an OpenGL" smoke.log; then
+            echo "no OpenGL on this runner; app exited cleanly"; exit 0
           fi
+          echo "app crashed (exit $rc)"; exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: pkg-macos
