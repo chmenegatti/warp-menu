@@ -82,7 +82,13 @@ jobs:
           for i in $(seq 30); do [ -f macos-smoke.png ] && break; sleep 1; done
           kill $pid 2>/dev/null || true
           cat smoke.log
-          ls -l macos-smoke.png
+          if ! ls -l macos-smoke.png; then
+            echo "--- backtrace ---"
+            WARP_DEBUG=1 WARP_SNAPSHOT="$PWD/macos-smoke.png" lldb --batch \
+              -o run -k "thread backtrace all" -k quit \
+              -- "dmg/TOTVS WARP.app/Contents/MacOS/warp-menu" 2>&1 | tail -60
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: pkg-macos
