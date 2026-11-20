@@ -20,7 +20,7 @@ cmake -S . -B build && cmake --build build -j   # manual build
 ./build/warp-menu                  # run binary directly
 ```
 
-First build downloads & compiles raylib 5.5 via CMake **FetchContent** — no system raylib needed. Subsequent builds are fast.
+First build downloads & compiles raylib 5.5 via CMake **FetchContent** — no system raylib needed. Subsequent builds are fast. FetchContent applies `cmake/patch-raylib.cmake`: raylib 5.5's `InitWindow()` ignores an `InitPlatform()` failure and segfaults in `rlglInit()`. With the patch it returns, `main` checks `IsWindowReady()` and exits with an error. That happens with no display or no OpenGL 3.3, as on GitHub's macOS VMs. Patch changes only apply to a fresh `build/` (`rm -rf build`).
 
 `warp.sh` configures and builds when `build/warp-menu` is missing, and rebuilds when anything in `src/` or `CMakeLists.txt` is newer than the binary. It resolves its own symlink: `~/.local/bin/warp` is a symlink to it, so `warp` runs the menu from anywhere. The user's previous `warp` binary was kept as `~/.local/bin/warp.old`.
 

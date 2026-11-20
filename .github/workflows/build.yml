@@ -71,6 +71,8 @@ jobs:
           ln -s /Applications dmg/Applications
           hdiutil create -volname "TOTVS WARP" -srcfolder dmg -ov -format UDZO \
             "warp-menu-$v-macos-universal.dmg"
+      # Best effort: GitHub's macOS VMs have no OpenGL, so the app usually
+      # exits with "could not create an OpenGL 3.3 window" here.
       - name: Smoke test (screenshot)
         continue-on-error: true
         run: |

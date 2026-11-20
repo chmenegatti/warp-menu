@@ -76,6 +76,11 @@ int main() {
     if (!std::getenv("WARP_DEBUG")) SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(ui::kVirtW * 3, ui::kVirtH * 3, "TOTVS WARP");
+    if (!IsWindowReady()) {
+        // No usable OpenGL 3.3 context (VM without GPU, remote desktop, ...).
+        std::fprintf(stderr, "TOTVS WARP: could not create an OpenGL 3.3 window.\n");
+        return 1;
+    }
     SetWindowMinSize(ui::kVirtW, ui::kVirtH);
     InitAudioDevice();
     SetExitKey(KEY_NULL);  // we handle quit ourselves

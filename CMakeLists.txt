@@ -24,6 +24,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/raysan5/raylib.git
     GIT_TAG 5.5
     GIT_SHALLOW ON
+    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch-raylib.cmake
 )
 FetchContent_MakeAvailable(raylib)
 
