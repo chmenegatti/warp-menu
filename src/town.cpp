@@ -136,6 +136,14 @@ float Town::camX() const {
     return std::floor(c);
 }
 
+void Town::emergeFrom(int i) {
+    if (i < 0 || i >= static_cast<int>(taverns_.size())) return;
+    doorIdx_ = i;
+    state_ = State::Leaving;
+    stateT_ = 0;
+    wx_ = taverns_[i].x + kHouseW * 0.5f;
+}
+
 void Town::leaveTavern() {
     if (state_ != State::Inside && state_ != State::Entering) return;
     state_ = State::Leaving;

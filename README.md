@@ -130,11 +130,12 @@ O `warp.sh` verifica se o binário existe e se o código mudou desde a última c
 
 ### Fluxo de uso
 
-1. Ande com o mago pela rua até a porta da taverna desejada. Uma caixa `UP: <ação>` mostra o que a taverna faz.
-2. Pressione **↑** para entrar. A ação é executada e uma janela mostra `WORKING...`, depois `SUCCESS` ou `FAILED`.
-3. Depois de **conectar** ou **trocar de vnet** com sucesso, o menu fecha sozinho.
-4. Depois de **desconectar**, ou se algo falhar, o mago sai da taverna e você pode escolher outra ação.
-5. Para sair sem fazer nada, pressione **Esc** ou ande até a placa `EXIT>` no fim da rua.
+1. Ao abrir, o mago sai da porta da taverna da vnet selecionada no momento.
+2. Ande com o mago pela rua até a porta da taverna desejada. Uma caixa `UP: <ação>` mostra o que a taverna faz.
+3. Pressione **↑** para entrar. A ação é executada e uma janela mostra `WORKING...`, depois `SUCCESS` ou `FAILED`.
+4. Depois de **conectar** ou **trocar de vnet** com sucesso, o menu fecha sozinho.
+5. Depois de **desconectar**, ou se algo falhar, o mago sai da taverna e você pode escolher outra ação.
+6. Para sair sem fazer nada, pressione **Esc** ou ande até a placa `EXIT>` no fim da rua.
 
 ---
 

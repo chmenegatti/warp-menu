@@ -35,6 +35,8 @@ public:
     int doorNearby() const;
     // Wizard came back out (after an action / cancelled confirm).
     void leaveTavern();
+    // Start the scene with the wizard walking out of tavern i (app launch).
+    void emergeFrom(int i);
     bool insideTavern() const { return state_ == State::Inside; }
 
     // Dev/snapshot helper: put the wizard at a world position (feet).

@@ -141,6 +141,16 @@ int main() {
     if (const char* p = std::getenv("WARP_SNAPSHOT_WIZ")) {
         float x = 0, y = 0;
         if (std::sscanf(p, "%f,%f", &x, &y) == 2) town.placeWizard(x, y);
+    } else {
+        // On launch the wizard walks out of the tavern of the vnet currently
+        // selected (WarpController's ctor already queried warp-cli).
+        const std::string cur = warp.vnetName();
+        for (size_t i = 0; i < items.size(); ++i)
+            if (items[i].kind == ItemKind::Vnet && items[i].label == "Warp " + cur) {
+                town.emergeFrom(static_cast<int>(i));
+                audio.playDoor();
+                break;
+            }
     }
     int frame = 0;
     double tickAcc = 0.0;      // fixed-step accumulator (60 Hz game ticks)
